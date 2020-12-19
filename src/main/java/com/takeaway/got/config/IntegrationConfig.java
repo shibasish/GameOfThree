@@ -9,11 +9,8 @@ import org.springframework.integration.json.JsonToObjectTransformer;
 import org.springframework.integration.json.ObjectToJsonTransformer;
 import org.springframework.integration.support.json.Jackson2JsonObjectMapper;
 
+@Configuration
 public class IntegrationConfig {
-
-    @Configuration
-    public class IntegrationConfig {
-
         @Bean
         @Transformer(inputChannel = "mqttHeaderEnricherChannel", outputChannel = "mqttOutboundChannel")
         public ObjectToJsonTransformer enrichHeader() {

@@ -2,92 +2,196 @@ package com.takeaway.got.service;
 
 import com.takeaway.got.dto.CurrentPlayedDto;
 import com.takeaway.got.gateway.IntegrationGateway;
+import com.takeaway.got.model.Game;
+import com.takeaway.got.model.Player;
+import com.takeaway.got.repo.GameRepo;
+import com.takeaway.got.repo.PlayerRepo;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.integration.mqtt.outbound.MqttPahoMessageHandler;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
 @Service
 public class GameServiceImpl implements GameService {
-    @Autowired
-    IntegrationGateway integrationGateway;
+	@Autowired
+	IntegrationGateway integrationGateway;
 
-    @Autowired
-    MqttPahoMessageHandler mqttOutbound;
+	@Autowired
+	GameRepo gameRepo;
 
-    @Value("${gameofthree.fromPlayerId}")
-    private String fromPlayer;
+	@Autowired
+	PlayerRepo playerRepo;
 
-    public String startGame(CurrentPlayedDto currentPlayedDto) {
+	@Value("${gameofthree.fromPlayerId}")
+	private String fromPlayer;
 
-        UUID uuid = UUID.randomUUID();
-        int startingNumber = new Random().nextInt(10000);
+	@Transactional
+	public String startGame(CurrentPlayedDto currentPlayedDto) {
 
-        currentPlayedDto.setNumber(startingNumber);
-        Message<CurrentPlayedDto> message = new GenericMessage<CurrentPlayedDto>(currentPlayedDto);
-        this.integrationGateway.sendToMqtt(message);
+		UUID uuid = UUID.randomUUID();
+		int startingNumber = new Random().nextInt(10000);
 
-        return "Played Successfully";
-    }
+		Optional<Player> player = playerRepo.findById(fromPlayer);
+		player.ifPresentOrElse(currentPlayer -> {
 
-    public String playTurn(CurrentPlayedDto currentPlayedDto) {
+			gameRepo.save(createGame(startingNumber, uuid, currentPlayedDto, "Active"));
 
-        if(currentPlayedDto.getNumber() == 0) {
-            return "You Lost!!";
-        }
+			List<Game> games = new ArrayList<>();
 
-        int val = calculateNextMove(currentPlayedDto.getNumber());
+			currentPlayer.setGames(games);
+			playerRepo.save(currentPlayer);
 
-        if(val == 1) {
-            CurrentPlayedDto currentPlayedDto2 = new CurrentPlayedDto();
-            currentPlayedDto2.setNumber(0);
-            this.integrationGateway.sendToMqtt(new GenericMessage<CurrentPlayedDto>(currentPlayedDto2));
-            return "You Won!!";
-        }
+			currentPlayedDto.setNumber(startingNumber);
+			currentPlayedDto.setGameId(uuid);
 
-        CurrentPlayedDto currentPlayedDto3 = new CurrentPlayedDto();
-        currentPlayedDto3.setFromPlayer(fromPlayer);
-        currentPlayedDto3.setToPlayer(currentPlayedDto.getToPlayer());
-        currentPlayedDto3.setNumber(val);
+			sendToChannel(currentPlayedDto);
 
-        Message<CurrentPlayedDto> message = new GenericMessage<CurrentPlayedDto>(currentPlayedDto3);
-        System.out.println("sending to p2: "+ val);
+		}, () -> {
 
-        this.integrationGateway.sendToMqtt(message);
-        return "Successfully played!";
-    }
+			Player newPlayer = new Player();
+			newPlayer.setPlayerId(fromPlayer);
+			newPlayer.setMode("automatic");
 
+			gameRepo.save(createGame(startingNumber, uuid, currentPlayedDto, "Active"));
 
-    private int calculateNextMove(int playedNumber) {
+			List<Game> games = new ArrayList<>();
+			newPlayer.setGames(games);
 
-        if(playedNumber%3 == 0) {
-            int nextVal = playedNumber/3;
-            if(nextVal == 1) {
-                return 1;
-            }
-            return nextVal;
-        }
-        else if(playedNumber%3 == 1) {
-            int nextVal = (playedNumber-1)/3;
-            if(nextVal == 1) {
-                return 1;
-            }
-            return nextVal;
-        }
-        else if(playedNumber%3 == 2) {
-            int nextVal = (playedNumber+1)/3;
-            if(nextVal == 1) {
-                return 1;
-            }
-            return nextVal;
-        }
+			playerRepo.save(newPlayer);
 
-        return 0;
-    }
+			currentPlayedDto.setNumber(startingNumber);
+			currentPlayedDto.setGameId(uuid);
+
+			sendToChannel(currentPlayedDto);
+		});
+
+		return "Played Successfully";
+	}
+
+	
+	@Transactional
+	public String playTurn(CurrentPlayedDto currentPlayedDto) {
+
+		if (currentPlayedDto.getNumber() == 0) {
+			System.out.println("received 0 from P1");
+			return "You Lost!!";
+		}
+
+		Optional<Player> player = playerRepo.findById(fromPlayer);
+		Optional<Game> game = player.get().getGames().stream()
+				.filter(currentGame -> currentGame.getGameId() == currentPlayedDto.getGameId()).findFirst();
+
+		final int val = calculateNextMove(currentPlayedDto.getNumber());
+
+		game.ifPresentOrElse(currentGame -> {
+
+			if (!checkWon(val, currentGame, currentPlayedDto)) {
+
+				currentGame.setCurrentNumber(val);
+
+				currentPlayedDto.setNumber(val);
+				currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
+				currentPlayedDto.setFromPlayer(fromPlayer);
+
+				sendToChannel(currentPlayedDto);
+			}
+		}, () -> {
+
+			Game newGame = createGame(val, currentPlayedDto.getGameId(), currentPlayedDto, "Active");
+
+			player.get().getGames().add(newGame);
+
+			gameRepo.save(newGame);
+			playerRepo.save(player.get());
+
+			if (!checkWon(val, newGame, currentPlayedDto)) {
+
+				currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
+				currentPlayedDto.setFromPlayer(fromPlayer);
+				currentPlayedDto.setNumber(val);
+
+				sendToChannel(currentPlayedDto);
+			}
+		});
+		return "Successfully played!";
+	}
+
+	private boolean checkWon(int currentNumber, Game game, CurrentPlayedDto currentPlayedDto) {
+
+		if (currentNumber == 1) {
+			System.out.println("You Won!!");
+
+			game.setStatus("COMPLETED");
+			game.setCurrentNumber(0);
+
+			currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
+			currentPlayedDto.setFromPlayer(fromPlayer);
+			currentPlayedDto.setNumber(0);
+
+			sendToChannel(currentPlayedDto);
+			return true;
+		}
+		return false;
+	}
+
+	public boolean alreadyPlayed(String fromPlayer, String toPlayer) {
+
+		return false;
+	}
+
+	private int calculateNextMove(int playedNumber) {
+
+		if (playedNumber % 3 == 0) {
+			int nextVal = playedNumber / 3;
+			if (nextVal == 1) {
+				return 1;
+			}
+			System.out.println("nextval: " + nextVal);
+			return nextVal;
+		} else if (playedNumber % 3 == 1) {
+			int nextVal = (playedNumber - 1) / 3;
+			if (nextVal == 1) {
+				return 1;
+			}
+			System.out.println("nextval: " + nextVal);
+			return nextVal;
+		} else if (playedNumber % 3 == 2) {
+			int nextVal = (playedNumber + 1) / 3;
+			if (nextVal == 1) {
+				return 1;
+			}
+			System.out.println("nextval: " + nextVal);
+			return nextVal;
+		}
+
+		return 0;
+	}
+	
+	private void sendToChannel(CurrentPlayedDto currentPlayedDto) {
+		Message<CurrentPlayedDto> message = new GenericMessage<CurrentPlayedDto>(currentPlayedDto);
+		this.integrationGateway.sendToMqtt(message);
+	}
+
+	private Game createGame(int startingNumber, UUID uuid, CurrentPlayedDto currentPlayedDto, String status) {
+
+		Game game = new Game();
+		game.setCurrentNumber(startingNumber);
+		game.setFirstPlayer(fromPlayer);
+		game.setGameId(uuid);
+		game.setPlayerTurn(currentPlayedDto.getToPlayer());
+		game.setSecondPlayer(currentPlayedDto.getToPlayer());
+		game.setStatus(status);
+
+		return game;
+	}
 
 }

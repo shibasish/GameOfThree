@@ -1,11 +1,21 @@
 package com.takeaway.got.dto;
 
+import java.util.UUID;
+
 public class CurrentPlayedDto {
 
+    private UUID gameId;
     private String toPlayer;
     private String fromPlayer;
     private int number;
 
+
+    public UUID getGameId() {
+        return gameId;
+    }
+    public void setGameId(UUID gameId) {
+        this.gameId = gameId;
+    }
     public String getToPlayer() {
         return toPlayer;
     }
