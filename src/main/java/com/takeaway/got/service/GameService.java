@@ -5,6 +5,6 @@ import com.takeaway.got.dto.CurrentPlayedDto;
 public interface GameService {
 
     String startGame(CurrentPlayedDto currentPlayedDto);
-    String playTurn(CurrentPlayedDto currentPlayedDto);
+    void playTurn(CurrentPlayedDto currentPlayedDto);
     String playManual(CurrentPlayedDto currentPlayedDto);
 }

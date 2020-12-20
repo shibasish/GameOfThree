@@ -3,6 +3,7 @@ package com.takeaway.got.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,12 +22,12 @@ public class PlayerDetailsController {
 	PlayerService playerService;
 	
 	@RequestMapping(method = RequestMethod.GET, value = "/pending")
-	public List<PendingGameDto> getPendingGames() {
-		return playerService.fetchPendingGames();
+	public ResponseEntity<List<PendingGameDto>> getPendingGames() {
+		return ResponseEntity.ok().body(playerService.fetchPendingGames());
 	}
 	
 	@RequestMapping(method = RequestMethod.POST, value = "/mode/{mode}")
-	public void setGameMode(@PathVariable("mode") String mode) {
-		playerService.changeMode(mode);
+	public ResponseEntity<String> setGameMode(@PathVariable("mode") String mode) {
+		return ResponseEntity.ok().body(playerService.changeMode(mode));
 	}
 }

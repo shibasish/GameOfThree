@@ -7,7 +7,7 @@ import com.takeaway.got.model.GAMEMODE;
 import com.takeaway.got.model.Player;
 
 public interface PlayerService {
-	void changeMode(String gamemode);
+	String changeMode(String gamemode);
 	Player createPlayer(GAMEMODE gamemode);
 	List<PendingGameDto> fetchPendingGames();
 }

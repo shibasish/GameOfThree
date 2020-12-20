@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.takeaway.got.dto.PendingGameDto;
 import com.takeaway.got.model.GAMEMODE;
@@ -24,7 +25,8 @@ public class PlayerServiceImpl implements PlayerService {
 	private String fromPlayer;
 	
 	@Override
-	public void changeMode(String gamemode) {
+	@Transactional
+	public String changeMode(String gamemode) {
 		
 		Optional<Player> player = playerRepo.findById(fromPlayer);
 		
@@ -36,7 +38,7 @@ public class PlayerServiceImpl implements PlayerService {
 			
 			playerRepo.save(currentPlayer);
 		});
-		
+		return "Mode updated";
 	}
 	
 	@Override
@@ -50,9 +52,11 @@ public class PlayerServiceImpl implements PlayerService {
 	}
 
 	@Override
+	@Transactional
 	public List<PendingGameDto> fetchPendingGames() {
 		return playerRepo.findById(fromPlayer).get().getGames().stream()
 					.filter( game -> game.getStatus() == GAMETYPE.PENDING )
+					.filter( game -> game.getPlayerTurn().equalsIgnoreCase(fromPlayer))
 					.map( game -> new PendingGameDto(game.getSecondPlayer(), game.getCurrentNumber(), game.getGameId()))
 					.collect(Collectors.toList());
 	}

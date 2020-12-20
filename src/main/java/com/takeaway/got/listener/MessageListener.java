@@ -70,7 +70,6 @@ public class MessageListener {
                 if(message.getPayload() instanceof CurrentPlayedDto) {
 
                     CurrentPlayedDto currentPlayedDto = (CurrentPlayedDto) message.getPayload();
-//                     if(currentPlayedDto.getNumber() >= 2)
                     gameService.playTurn(currentPlayedDto);
 
                 }
