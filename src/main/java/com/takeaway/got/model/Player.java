@@ -1,10 +1,13 @@
 package com.takeaway.got.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
 
@@ -19,8 +22,8 @@ public class Player {
 	@Column(name="MODE")
 	private String mode;
 	
-	@Column(name="GAME_ID")
-	@OneToMany
+	@Column(name="PLAYER_GAME")
+	@OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
 	private List<Game> games = new ArrayList<>();
 
 	public String getPlayerId() {

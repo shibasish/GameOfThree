@@ -4,6 +4,7 @@ import com.takeaway.got.dto.CurrentPlayedDto;
 import com.takeaway.got.gateway.IntegrationGateway;
 import com.takeaway.got.model.Game;
 import com.takeaway.got.model.Player;
+import com.takeaway.got.model.GAMETYPE;
 import com.takeaway.got.repo.GameRepo;
 import com.takeaway.got.repo.PlayerRepo;
 
@@ -33,8 +34,7 @@ public class GameServiceImpl implements GameService {
 
 	@Value("${gameofthree.fromPlayerId}")
 	private String fromPlayer;
-
-	@Transactional
+	
 	public String startGame(CurrentPlayedDto currentPlayedDto) {
 
 		UUID uuid = UUID.randomUUID();
@@ -42,13 +42,8 @@ public class GameServiceImpl implements GameService {
 
 		Optional<Player> player = playerRepo.findById(fromPlayer);
 		player.ifPresentOrElse(currentPlayer -> {
-
-			gameRepo.save(createGame(startingNumber, uuid, currentPlayedDto, "Active"));
-
-			List<Game> games = new ArrayList<>();
-
-			currentPlayer.setGames(games);
-			playerRepo.save(currentPlayer);
+			
+			persistGame(currentPlayer, startingNumber, uuid, currentPlayedDto);
 
 			currentPlayedDto.setNumber(startingNumber);
 			currentPlayedDto.setGameId(uuid);
@@ -60,78 +55,73 @@ public class GameServiceImpl implements GameService {
 			Player newPlayer = new Player();
 			newPlayer.setPlayerId(fromPlayer);
 			newPlayer.setMode("automatic");
-
-			gameRepo.save(createGame(startingNumber, uuid, currentPlayedDto, "Active"));
-
-			List<Game> games = new ArrayList<>();
-			newPlayer.setGames(games);
-
-			playerRepo.save(newPlayer);
-
+			
+			persistGame(newPlayer, startingNumber, uuid, currentPlayedDto);
+			
 			currentPlayedDto.setNumber(startingNumber);
 			currentPlayedDto.setGameId(uuid);
-
+			
 			sendToChannel(currentPlayedDto);
 		});
 
 		return "Played Successfully";
 	}
 
-	
 	@Transactional
 	public String playTurn(CurrentPlayedDto currentPlayedDto) {
 
-		if (currentPlayedDto.getNumber() == 0) {
-			System.out.println("received 0 from P1");
-			return "You Lost!!";
-		}
-
-		Optional<Player> player = playerRepo.findById(fromPlayer);
-		Optional<Game> game = player.get().getGames().stream()
-				.filter(currentGame -> currentGame.getGameId() == currentPlayedDto.getGameId()).findFirst();
-
+		
 		final int val = calculateNextMove(currentPlayedDto.getNumber());
+		
+		Optional<Player> player = playerRepo.findById(fromPlayer);
+		
+		player.ifPresent( currentPlayer -> {
+						
+			Optional<Game> game = player.get().getGames()
+					.stream()
+					.filter( currentGame -> currentGame.getGameId().equals(currentPlayedDto.getGameId()))
+					.filter( currentGame -> currentGame.getStatus() == GAMETYPE.ACTIVE )
+					.findFirst();
+			
+			game.ifPresent(currentGame -> {
 
-		game.ifPresentOrElse(currentGame -> {
+				if (!checkWon(val, currentGame, currentPlayedDto)) {
 
-			if (!checkWon(val, currentGame, currentPlayedDto)) {
+					currentGame.setCurrentNumber(val);
+					
+					gameRepo.save(currentGame);
 
-				currentGame.setCurrentNumber(val);
+					currentPlayedDto.setNumber(val);
+					currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
+					currentPlayedDto.setFromPlayer(fromPlayer);
 
-				currentPlayedDto.setNumber(val);
-				currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
-				currentPlayedDto.setFromPlayer(fromPlayer);
-
-				sendToChannel(currentPlayedDto);
-			}
-		}, () -> {
-
-			Game newGame = createGame(val, currentPlayedDto.getGameId(), currentPlayedDto, "Active");
-
-			player.get().getGames().add(newGame);
-
-			gameRepo.save(newGame);
-			playerRepo.save(player.get());
-
-			if (!checkWon(val, newGame, currentPlayedDto)) {
-
-				currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
-				currentPlayedDto.setFromPlayer(fromPlayer);
-				currentPlayedDto.setNumber(val);
-
-				sendToChannel(currentPlayedDto);
-			}
-		});
+					sendToChannel(currentPlayedDto);
+				}
+				
+			});
+		} );
 		return "Successfully played!";
 	}
 
+	@Transactional
+	private void persistGame(Player player, int number, UUID uuid, CurrentPlayedDto currentPlayedDto) {
+		
+		Game newGame = createGame(number, uuid, currentPlayedDto, GAMETYPE.ACTIVE);
+		gameRepo.save(newGame);
+
+		player.getGames().add(newGame);
+		playerRepo.save(player);
+	}
+	
 	private boolean checkWon(int currentNumber, Game game, CurrentPlayedDto currentPlayedDto) {
 
-		if (currentNumber == 1) {
+		if (currentNumber <= 1) {
 			System.out.println("You Won!!");
 
-			game.setStatus("COMPLETED");
+			game.setStatus(GAMETYPE.COMPLETE);
 			game.setCurrentNumber(0);
+			
+			gameRepo.save(game);
 
 			currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
 			currentPlayedDto.setFromPlayer(fromPlayer);
@@ -143,37 +133,29 @@ public class GameServiceImpl implements GameService {
 		return false;
 	}
 
-	public boolean alreadyPlayed(String fromPlayer, String toPlayer) {
-
-		return false;
-	}
 
 	private int calculateNextMove(int playedNumber) {
-
-		if (playedNumber % 3 == 0) {
-			int nextVal = playedNumber / 3;
-			if (nextVal == 1) {
-				return 1;
-			}
-			System.out.println("nextval: " + nextVal);
-			return nextVal;
-		} else if (playedNumber % 3 == 1) {
-			int nextVal = (playedNumber - 1) / 3;
-			if (nextVal == 1) {
-				return 1;
-			}
-			System.out.println("nextval: " + nextVal);
-			return nextVal;
-		} else if (playedNumber % 3 == 2) {
-			int nextVal = (playedNumber + 1) / 3;
-			if (nextVal == 1) {
-				return 1;
-			}
-			System.out.println("nextval: " + nextVal);
-			return nextVal;
+		
+		int modulo = playedNumber % 3;
+		int nextMove = 0;
+		
+		switch(modulo) {
+			case 0: 
+				nextMove = (playedNumber / 3);
+				break;
+			case 1: 
+				nextMove = ((playedNumber - 1) / 3);
+				break;
+			case 2: 
+				nextMove = ((playedNumber + 1) / 3);
+				break;
+			default: 
+				nextMove = 0;
+				break;
 		}
-
-		return 0;
+		
+		return nextMove;
+		
 	}
 	
 	private void sendToChannel(CurrentPlayedDto currentPlayedDto) {
@@ -181,7 +163,7 @@ public class GameServiceImpl implements GameService {
 		this.integrationGateway.sendToMqtt(message);
 	}
 
-	private Game createGame(int startingNumber, UUID uuid, CurrentPlayedDto currentPlayedDto, String status) {
+	private Game createGame(int startingNumber, UUID uuid, CurrentPlayedDto currentPlayedDto, GAMETYPE status) {
 
 		Game game = new Game();
 		game.setCurrentNumber(startingNumber);
