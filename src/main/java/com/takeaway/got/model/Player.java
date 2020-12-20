@@ -7,6 +7,8 @@ import java.util.List;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
@@ -20,7 +22,8 @@ public class Player {
 	private String playerId;
 	
 	@Column(name="MODE")
-	private String mode;
+	@Enumerated(EnumType.STRING) 
+	private GAMEMODE mode;
 	
 	@Column(name="PLAYER_GAME")
 	@OneToMany(cascade = CascadeType.PERSIST, fetch = FetchType.EAGER)
@@ -32,10 +35,10 @@ public class Player {
 	public void setPlayerId(String playerId) {
 		this.playerId = playerId;
 	}
-	public String getMode() {
+	public GAMEMODE getMode() {
 		return mode;
 	}
-	public void setMode(String mode) {
+	public void setMode(GAMEMODE mode) {
 		this.mode = mode;
 	}
 	public List<Game> getGames() {

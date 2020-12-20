@@ -22,6 +22,6 @@ public class GameController {
 
     @RequestMapping(method = RequestMethod.POST, value="/play", consumes = "application/json")
     public String playTurn(@RequestBody CurrentPlayedDto currentPlayedDto) {
-        return gameService.playTurn(currentPlayedDto);
+        return gameService.playManual(currentPlayedDto);
     }
 }

@@ -6,4 +6,5 @@ public interface GameService {
 
     String startGame(CurrentPlayedDto currentPlayedDto);
     String playTurn(CurrentPlayedDto currentPlayedDto);
+    String playManual(CurrentPlayedDto currentPlayedDto);
 }
