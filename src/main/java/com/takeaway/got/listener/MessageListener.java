@@ -66,7 +66,6 @@ public class MessageListener {
 
             @Override
             public void handleMessage(Message<?> message) throws MessagingException {
-                System.out.println("reveived from P2: "+message.getPayload());
                 if(message.getPayload() instanceof CurrentPlayedDto) {
 
                     CurrentPlayedDto currentPlayedDto = (CurrentPlayedDto) message.getPayload();

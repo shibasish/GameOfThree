@@ -20,10 +20,13 @@ public class PlayerServiceImpl implements PlayerService {
 	
 	@Autowired
 	PlayerRepo playerRepo;
-	
+
 	@Value("${gameofthree.fromPlayerId}")
 	private String fromPlayer;
-	
+
+	@Value("${gameofthree.game.mode}")
+	private String gameMode;
+
 	@Override
 	@Transactional
 	public String changeMode(String gamemode) {
@@ -42,12 +45,20 @@ public class PlayerServiceImpl implements PlayerService {
 	}
 	
 	@Override
-	public Player createPlayer(GAMEMODE gamemode) {
+	@Transactional
+	public Player createPlayer() {
 		
 		Player newPlayer = new Player();
 		newPlayer.setPlayerId(fromPlayer);
-		newPlayer.setMode(gamemode);
-		
+
+		if (gameMode.equalsIgnoreCase(GAMEMODE.AUTOMATIC.getGameMode())) {
+			newPlayer.setMode(GAMEMODE.AUTOMATIC);
+		} else {
+			newPlayer.setMode(GAMEMODE.MANUAL);
+		}
+
+		playerRepo.saveAndFlush(newPlayer);
+
 		return newPlayer;
 	}
 

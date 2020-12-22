@@ -1,29 +1,26 @@
 version: '3.5'
 
-#networks:
-#    foo:
-#      name: foo
-#      driver: bridge
-
-# Define services
 services:
-  # App backend service
   app-server:
-    # Configuration for building the docker image for the backend service
     build: .
     container_name: Player1
     ports:
-      - "8080:8080" # Forward the exposed port 8080 on the container to port 8080 on the host machine
+      - "8080:8080"
     restart: always
-    network_mode: host
-#    networks:
-#       - foo
+    networks:
+       - foo
     depends_on: 
       - mydb
-#    external_links:
-#      - mosquitto:eclipse-mosquitto
+    external_links:
+      - mosquitto:eclipse-mosquitto
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/takeaway_db?serverTimezone=UTC&useLegacyDatetimeCode=false&createDatabaseIfNotExist=true
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mydb:3306/takeaway_db?createDatabaseIfNotExist=true
+      - MYSQL_ROOT_USER=root
+      - MYSQL_ROOT_PASSWORD=P@ssword1234
+      - GAMEOFTHREE_FROMPLAYERID=player1
+      - GAMEOFTHREE_TOPLAYERID=player2
+      - GAMEOFTHREE_GAMEMODE=AUTOMATIC
+      - SERVER_PORT=8080
 
   mydb:
     image: mysql
@@ -31,11 +28,18 @@ services:
     ports:
       - "3306:3306"
     restart: always
-    network_mode: host
-#    networks:
-#       - foo
+    networks:
+       - foo
     environment:
       - MYSQL_ROOT_USER=root 
       - MYSQL_ROOT_PASSWORD=P@ssword1234
     volumes:
-      - /var/lib/mysql
+      - my-vol:/var/lib/mysql
+
+networks:
+  foo:
+    external:
+      name: foo
+
+volumes:
+  my-vol:

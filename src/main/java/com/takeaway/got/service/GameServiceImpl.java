@@ -41,34 +41,23 @@ public class GameServiceImpl implements GameService {
 	@Value("${gameofthree.fromPlayerId}")
 	private String fromPlayer;
 
+	@Value("${gameofthree.game.mode}")
+	private GAMEMODE gameMode;
+
 	public String startGame(CurrentPlayedDto currentPlayedDto) {
 
 		UUID uuid = UUID.randomUUID();
 		int startingNumber = new Random().nextInt(100);
 
 		Optional<Player> player = playerRepo.findById(fromPlayer);
-		player.ifPresentOrElse(currentPlayer -> {
 
-			persistGame(currentPlayer, startingNumber, uuid, currentPlayedDto);
+		persistGame(player.get(), startingNumber, uuid, currentPlayedDto);
 
-			currentPlayedDto.setFromPlayer(fromPlayer);
-			currentPlayedDto.setNumber(startingNumber);
-			currentPlayedDto.setGameId(uuid);
+		currentPlayedDto.setFromPlayer(fromPlayer);
+		currentPlayedDto.setNumber(startingNumber);
+		currentPlayedDto.setGameId(uuid);
 
-			sendToChannel(currentPlayedDto);
-
-		}, () -> {
-
-			Player newPlayer = playerService.createPlayer(GAMEMODE.AUTOMATIC);
-
-			persistGame(newPlayer, startingNumber, uuid, currentPlayedDto);
-
-			currentPlayedDto.setFromPlayer(fromPlayer);
-			currentPlayedDto.setNumber(startingNumber);
-			currentPlayedDto.setGameId(uuid);
-
-			sendToChannel(currentPlayedDto);
-		});
+		sendToChannel(currentPlayedDto);
 
 		return "Played Successfully";
 	}

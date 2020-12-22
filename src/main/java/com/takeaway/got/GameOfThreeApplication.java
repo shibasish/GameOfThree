@@ -1,7 +1,13 @@
 package com.takeaway.got;
 
+import java.util.Optional;
+
+import com.takeaway.got.model.Player;
+import com.takeaway.got.service.PlayerService;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -13,15 +19,16 @@ import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannel
 import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.MessageChannel;
 
+import com.takeaway.got.model.GAMEMODE;
+import com.takeaway.got.repo.PlayerRepo;
+
+
 @SpringBootApplication
 @Configuration
-public class GameOfThreeApplication {
+public class GameOfThreeApplication implements CommandLineRunner {
 
 	@Value("${gameofthree.fromPlayerId}")
 	private String fromPlayer;
-
-	@Value("${gameofthree.toPlayerId}")
-	private String toPlayer;
 
 	@Value("${mqtt.borker.url}")
 	private String brokerUrl;
@@ -31,6 +38,15 @@ public class GameOfThreeApplication {
 
 	@Value("${mqtt.borker.password}")
 	private String password;
+	
+	@Value("${gameofthree.game.mode}")
+	private GAMEMODE gameMode;
+	
+	@Autowired
+	PlayerRepo playerRepo;
+
+	@Autowired
+	PlayerService playerService;
 
 	@Bean
 	public MessageChannel mqttInputChannel() {
@@ -71,4 +87,16 @@ public class GameOfThreeApplication {
 		SpringApplication.run(GameOfThreeApplication.class, args);
 	}
 
+	@Override
+	public void run(String... args) throws Exception {
+
+		Optional<Player> player = playerRepo.findById(fromPlayer);
+		player.orElse(createPlayer());
+
+	}
+	
+	private Player createPlayer() {
+		playerService.createPlayer();
+		return null;
+	}
 }

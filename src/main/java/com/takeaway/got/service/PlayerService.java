@@ -8,6 +8,6 @@ import com.takeaway.got.model.Player;
 
 public interface PlayerService {
 	String changeMode(String gamemode);
-	Player createPlayer(GAMEMODE gamemode);
+	Player createPlayer();
 	List<PendingGameDto> fetchPendingGames();
 }
