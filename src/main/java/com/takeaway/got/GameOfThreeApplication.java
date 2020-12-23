@@ -1,5 +1,6 @@
 package com.takeaway.got;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import com.takeaway.got.model.Player;
@@ -21,10 +22,18 @@ import org.springframework.messaging.MessageChannel;
 
 import com.takeaway.got.model.GAMEMODE;
 import com.takeaway.got.repo.PlayerRepo;
+//import springfox.documentation.RequestHandler;
+//import springfox.documentation.builders.PathSelectors;
+//import springfox.documentation.builders.RequestHandlerSelectors;
+//import springfox.documentation.service.ApiInfo;
+//import springfox.documentation.spi.DocumentationType;
+//import springfox.documentation.spring.web.plugins.Docket;
+//import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 
 @SpringBootApplication
 @Configuration
+//@EnableSwagger2
 public class GameOfThreeApplication implements CommandLineRunner {
 
 	@Value("${gameofthree.fromPlayerId}")
@@ -83,20 +92,18 @@ public class GameOfThreeApplication implements CommandLineRunner {
 		return new DirectChannel();
 	}
 
+
+
 	public static void main(String[] args) {
 		SpringApplication.run(GameOfThreeApplication.class, args);
 	}
 
 	@Override
 	public void run(String... args) throws Exception {
-
-		Optional<Player> player = playerRepo.findById(fromPlayer);
-		player.orElse(createPlayer());
-
+		createPlayer();
 	}
 	
-	private Player createPlayer() {
-		playerService.createPlayer();
-		return null;
+	private Optional<Player> createPlayer() {
+		return playerService.createPlayer();
 	}
 }

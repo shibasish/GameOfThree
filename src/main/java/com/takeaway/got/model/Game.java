@@ -37,6 +37,18 @@ public class Game {
     @Column(name = "RESULT")
     private String result;
 
+    public Game() {
+    }
+
+    public Game(UUID gameId, String firstPlayer, String secondPlayer, String playerTurn, int currentNumber, GAMETYPE status, String result) {
+        this.gameId = gameId;
+        this.firstPlayer = firstPlayer;
+        this.secondPlayer = secondPlayer;
+        this.playerTurn = playerTurn;
+        this.currentNumber = currentNumber;
+        this.status = status;
+        this.result = result;
+    }
 
     public UUID getGameId() {
         return gameId;

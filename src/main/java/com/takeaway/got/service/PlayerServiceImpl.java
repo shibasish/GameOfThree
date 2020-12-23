@@ -17,62 +17,59 @@ import com.takeaway.got.repo.PlayerRepo;
 
 @Service
 public class PlayerServiceImpl implements PlayerService {
-	
-	@Autowired
-	PlayerRepo playerRepo;
 
-	@Value("${gameofthree.fromPlayerId}")
-	private String fromPlayer;
+    @Autowired
+    PlayerRepo playerRepo;
 
-	@Value("${gameofthree.game.mode}")
-	private String gameMode;
+    @Value("${gameofthree.fromPlayerId}")
+    private String fromPlayer;
 
-	@Override
-	@Transactional
-	public String changeMode(String gamemode) {
-		
-		Optional<Player> player = playerRepo.findById(fromPlayer);
-		
-		player.ifPresent( currentPlayer -> {
-			if(gamemode == null)
-				currentPlayer.setMode(GAMEMODE.AUTOMATIC);
-			else
-				currentPlayer.setMode(parseStringToEnumMode(gamemode));
-			
-			playerRepo.save(currentPlayer);
-		});
-		return "Mode updated";
-	}
-	
-	@Override
-	@Transactional
-	public Player createPlayer() {
-		
-		Player newPlayer = new Player();
-		newPlayer.setPlayerId(fromPlayer);
+    @Value("${gameofthree.game.mode}")
+    private String gameMode;
 
-		if (gameMode.equalsIgnoreCase(GAMEMODE.AUTOMATIC.getGameMode())) {
-			newPlayer.setMode(GAMEMODE.AUTOMATIC);
-		} else {
-			newPlayer.setMode(GAMEMODE.MANUAL);
-		}
+    @Override
+    @Transactional
+    public GAMEMODE changeMode(String gamemode) {
 
-		playerRepo.saveAndFlush(newPlayer);
+        Optional<Player> player = playerRepo.findById(fromPlayer);
+        GAMEMODE mode = parseStringToEnumMode(gamemode);
+        player.ifPresent(currentPlayer -> {
+            currentPlayer.setMode(mode);
+            playerRepo.save(currentPlayer);
+        });
+        return mode;
+    }
 
-		return newPlayer;
-	}
+    @Override
+    @Transactional
+    public Optional<Player> createPlayer() {
+        return playerRepo.findById(fromPlayer)
+                .or(() -> {
+                    Player newPlayer = new Player();
+                    newPlayer.setPlayerId(fromPlayer);
 
-	@Override
-	@Transactional
-	public List<PendingGameDto> fetchPendingGames() {
-		return playerRepo.findById(fromPlayer).get().getGames().stream()
-					.filter( game -> game.getStatus() == GAMETYPE.PENDING )
-					.filter( game -> game.getPlayerTurn().equalsIgnoreCase(fromPlayer))
-					.map( game -> new PendingGameDto(game.getSecondPlayer(), game.getCurrentNumber(), game.getGameId()))
-					.collect(Collectors.toList());
-	}
-	
-	private GAMEMODE parseStringToEnumMode(String mode) {
-		return GAMEMODE.valueOf(mode.toUpperCase());
-	}
+                    if (gameMode.equalsIgnoreCase(GAMEMODE.AUTOMATIC.getGameMode()))
+                        newPlayer.setMode(GAMEMODE.AUTOMATIC);
+                    else
+                        newPlayer.setMode(GAMEMODE.MANUAL);
+
+                    playerRepo.saveAndFlush(newPlayer);
+
+                    return Optional.of(newPlayer);
+                });
+    }
+
+    @Override
+    @Transactional
+    public List<PendingGameDto> fetchPendingGames() {
+        return playerRepo.findById(fromPlayer).get().getGames().stream()
+                .filter(game -> game.getStatus() == GAMETYPE.PENDING)
+                .filter(game -> game.getPlayerTurn().equalsIgnoreCase(fromPlayer))
+                .map(game -> new PendingGameDto(game.getSecondPlayer(), game.getCurrentNumber(), game.getGameId()))
+                .collect(Collectors.toList());
+    }
+
+    private GAMEMODE parseStringToEnumMode(String mode) {
+        return GAMEMODE.valueOf(mode.toUpperCase());
+    }
 }

@@ -2,6 +2,8 @@ package com.takeaway.got.controller;
 
 import java.util.List;
 
+//import io.swagger.annotations.ApiOperation;
+//import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,7 +29,7 @@ public class PlayerDetailsController {
 	}
 	
 	@RequestMapping(method = RequestMethod.POST, value = "/mode/{mode}")
-	public ResponseEntity<String> setGameMode(@PathVariable("mode") String mode) {
+	public ResponseEntity<GAMEMODE> setGameMode(@PathVariable("mode") String mode) {
 		return ResponseEntity.ok().body(playerService.changeMode(mode));
 	}
 }

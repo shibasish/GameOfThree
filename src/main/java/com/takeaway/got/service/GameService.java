@@ -1,10 +1,12 @@
 package com.takeaway.got.service;
 
 import com.takeaway.got.dto.CurrentPlayedDto;
+import com.takeaway.got.dto.ResponseDto;
 
 public interface GameService {
 
-    String startGame(CurrentPlayedDto currentPlayedDto);
-    void playTurn(CurrentPlayedDto currentPlayedDto);
-    String playManual(CurrentPlayedDto currentPlayedDto);
+    ResponseDto startGame(CurrentPlayedDto currentPlayedDto);
+    ResponseDto playTurn(CurrentPlayedDto currentPlayedDto);
+    ResponseDto playManual(CurrentPlayedDto currentPlayedDto);
+    int calculateNextMove(int playedNumber);
 }

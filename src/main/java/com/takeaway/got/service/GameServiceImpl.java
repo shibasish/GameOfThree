@@ -1,6 +1,7 @@
 package com.takeaway.got.service;
 
 import com.takeaway.got.dto.CurrentPlayedDto;
+import com.takeaway.got.dto.ResponseDto;
 import com.takeaway.got.exception.ResourceNotFoundException;
 import com.takeaway.got.exception.ValueMisingException;
 import com.takeaway.got.gateway.IntegrationGateway;
@@ -18,7 +19,6 @@ import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Predicate;
@@ -41,32 +41,35 @@ public class GameServiceImpl implements GameService {
 	@Value("${gameofthree.fromPlayerId}")
 	private String fromPlayer;
 
+	@Value("${gameofthree.toPlayerId}")
+	private String toPlayer;
+
 	@Value("${gameofthree.game.mode}")
 	private GAMEMODE gameMode;
 
-	public String startGame(CurrentPlayedDto currentPlayedDto) {
+	@Override
+	public ResponseDto startGame(CurrentPlayedDto currentPlayedDto) {
 
 		UUID uuid = UUID.randomUUID();
 		int startingNumber = new Random().nextInt(100);
 
-		Optional<Player> player = playerRepo.findById(fromPlayer);
-
-		persistGame(player.get(), startingNumber, uuid, currentPlayedDto);
-
 		currentPlayedDto.setFromPlayer(fromPlayer);
 		currentPlayedDto.setNumber(startingNumber);
 		currentPlayedDto.setGameId(uuid);
+		currentPlayedDto.setToPlayer(toPlayer);
+
+		Game game = persistGame(currentPlayedDto);
 
 		sendToChannel(currentPlayedDto);
 
-		return "Played Successfully";
+		return new ResponseDto(uuid, "Played Successfully", startingNumber, game.getStatus());
 	}
 
 	@Transactional
-	public void playTurn(CurrentPlayedDto currentPlayedDto) {
+	public ResponseDto playTurn(CurrentPlayedDto currentPlayedDto) {
 
 		if (checkAlreadyPlayed(currentPlayedDto))
-			return;
+			return null;
 
 		Player player = playerRepo.findById(fromPlayer)
 				.orElseThrow(() -> new ResourceNotFoundException("Player " + fromPlayer + " not found"));
@@ -76,15 +79,17 @@ public class GameServiceImpl implements GameService {
 
 		Game game = player.getGames().stream()
 				.filter(currentGame -> currentGame.getGameId().equals(currentPlayedDto.getGameId()))
-				.filter(activeGames.or(pendingGames)).findFirst()
-				.orElseThrow(() -> new ResourceNotFoundException("Game not found"));
+				.filter(activeGames.or(pendingGames))
+				.findFirst()
+				.orElseGet(()-> persistGame(currentPlayedDto));
 
 		if (currentPlayedDto.getNumber() == 0 || currentPlayedDto.getNumber() == 1) {
 			game.setCurrentNumber(0);
 			game.setResult("LOST");
 			game.setStatus(GAMETYPE.COMPLETE);
+
 			gameRepo.save(game);
-			return;
+			return new ResponseDto(game.getGameId(), "Game lost", game.getCurrentNumber(), game.getStatus());
 		}
 
 		if (player.getMode() == GAMEMODE.MANUAL) {
@@ -94,9 +99,11 @@ public class GameServiceImpl implements GameService {
 			game.setPlayerTurn(currentPlayedDto.getToPlayer());
 			gameRepo.save(game);
 
-			// logic for user notification goes here
+			// TODO: logic for user notification goes here --> workers
+
+			return new ResponseDto(game.getGameId(), "Game is Pending", game.getCurrentNumber(), game.getStatus());
 		} else
-			playAutomatic(currentPlayedDto, game);
+			return playAutomatic(currentPlayedDto, game);
 	}
 
 	private boolean checkAlreadyPlayed(CurrentPlayedDto currentPlayedDto) {
@@ -106,24 +113,25 @@ public class GameServiceImpl implements GameService {
 	}
 
 	@Transactional
-	private void playAutomatic(CurrentPlayedDto currentPlayedDto, Game game) {
+	private ResponseDto playAutomatic(CurrentPlayedDto currentPlayedDto, Game game) {
 		int nextValue = calculateNextMove(currentPlayedDto.getNumber());
 		if (!checkWon(nextValue, game, currentPlayedDto)) {
 			currentPlayedDto.setNumber(nextValue);
 			currentPlayedDto.setToPlayer(currentPlayedDto.getFromPlayer());
 			game.setPlayerTurn(currentPlayedDto.getFromPlayer());
 			play(game, currentPlayedDto);
-			return;
+			return new ResponseDto(game.getGameId(), "Played Successfully.", currentPlayedDto.getNumber(), game.getStatus());
 		}
 
 		game.setStatus(GAMETYPE.COMPLETE);
 		game.setResult("WINNER");
 		gameRepo.save(game);
 
+		return new ResponseDto(game.getGameId(), "You won!!", game.getCurrentNumber(), game.getStatus());
 	}
 
 	@Transactional
-	public String playManual(CurrentPlayedDto currentPlayedDto) {
+	public ResponseDto playManual(CurrentPlayedDto currentPlayedDto) {
 
 		if (currentPlayedDto.getNumber() == 0 || currentPlayedDto.getToPlayer() == null
 				|| currentPlayedDto.getGameId() == null)
@@ -138,20 +146,30 @@ public class GameServiceImpl implements GameService {
 		if (!checkWon(currentPlayedDto.getNumber(), currentGame, currentPlayedDto)) {
 			currentGame.setPlayerTurn(currentPlayedDto.getToPlayer());
 			play(currentGame, currentPlayedDto);
-		} else
-			return "You won!";
+		} else {
+			currentGame.setStatus(GAMETYPE.COMPLETE);
+			currentGame.setResult("WINNER");
+			gameRepo.save(currentGame);
+			return new ResponseDto(currentGame.getGameId(), "You won!", 0, currentGame.getStatus());
+		}
 
-		return "Played Successfully";
+		return new ResponseDto(currentGame.getGameId(), "Played Successfully", 0, currentGame.getStatus());
 	}
 
 	@Transactional
-	private void persistGame(Player player, int number, UUID uuid, CurrentPlayedDto currentPlayedDto) {
+	private Game persistGame(CurrentPlayedDto currentPlayedDto) {
 
-		Game newGame = createGame(number, uuid, currentPlayedDto, GAMETYPE.ACTIVE);
+		Player player = playerRepo.findById(fromPlayer)
+				.orElseThrow(() -> new ResourceNotFoundException("Player "+ fromPlayer + " not found" ));
+
+		Game newGame = createGame(currentPlayedDto, GAMETYPE.ACTIVE);
 		gameRepo.save(newGame);
 
 		player.getGames().add(newGame);
+
 		playerRepo.save(player);
+
+		return newGame;
 	}
 
 	private void sendToChannel(CurrentPlayedDto currentPlayedDto) {
@@ -159,12 +177,12 @@ public class GameServiceImpl implements GameService {
 		this.integrationGateway.sendToMqtt(message);
 	}
 
-	private Game createGame(int startingNumber, UUID uuid, CurrentPlayedDto currentPlayedDto, GAMETYPE status) {
+	private Game createGame(CurrentPlayedDto currentPlayedDto, GAMETYPE status) {
 
 		Game game = new Game();
-		game.setCurrentNumber(startingNumber);
+		game.setCurrentNumber(currentPlayedDto.getNumber());
 		game.setFirstPlayer(fromPlayer);
-		game.setGameId(uuid);
+		game.setGameId(currentPlayedDto.getGameId());
 		game.setPlayerTurn(currentPlayedDto.getToPlayer());
 		game.setSecondPlayer(currentPlayedDto.getToPlayer());
 		game.setStatus(status);
@@ -175,7 +193,6 @@ public class GameServiceImpl implements GameService {
 	@Transactional
 	private void play(Game game, CurrentPlayedDto currentPlayedDto) {
 		game.setCurrentNumber(currentPlayedDto.getNumber());
-
 		gameRepo.save(game);
 
 		currentPlayedDto.setFromPlayer(fromPlayer);
@@ -202,7 +219,7 @@ public class GameServiceImpl implements GameService {
 		return false;
 	}
 
-	private int calculateNextMove(int playedNumber) {
+	public int calculateNextMove(int playedNumber) {
 
 		int modulo = playedNumber % 3;
 		int nextMove = 0;
