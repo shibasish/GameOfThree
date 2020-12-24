@@ -106,12 +106,6 @@ public class GameServiceImpl implements GameService {
 			return playAutomatic(currentPlayedDto, game);
 	}
 
-	private boolean checkAlreadyPlayed(CurrentPlayedDto currentPlayedDto) {
-		if (currentPlayedDto.getFromPlayer() == null)
-			currentPlayedDto.setFromPlayer(fromPlayer);
-		return currentPlayedDto.getFromPlayer().equalsIgnoreCase(fromPlayer) ? true : false;
-	}
-
 	@Transactional
 	private ResponseDto playAutomatic(CurrentPlayedDto currentPlayedDto, Game game) {
 		int nextValue = calculateNextMove(currentPlayedDto.getNumber());
@@ -157,6 +151,41 @@ public class GameServiceImpl implements GameService {
 	}
 
 	@Transactional
+	private void play(Game game, CurrentPlayedDto currentPlayedDto) {
+		game.setCurrentNumber(currentPlayedDto.getNumber());
+		gameRepo.save(game);
+
+		currentPlayedDto.setFromPlayer(fromPlayer);
+		sendToChannel(currentPlayedDto);
+	}
+
+	public int calculateNextMove(int playedNumber) {
+		int modulo = playedNumber % 3;
+		int nextMove = 0;
+		switch (modulo) {
+			case 0:
+				nextMove = (playedNumber / 3);
+				break;
+			case 1:
+				nextMove = ((playedNumber - 1) / 3);
+				break;
+			case 2:
+				nextMove = ((playedNumber + 1) / 3);
+				break;
+			default:
+				nextMove = 0;
+				break;
+		}
+		return nextMove;
+	}
+
+	private boolean checkAlreadyPlayed(CurrentPlayedDto currentPlayedDto) {
+		if (currentPlayedDto.getFromPlayer() == null)
+			currentPlayedDto.setFromPlayer(fromPlayer);
+		return currentPlayedDto.getFromPlayer().equalsIgnoreCase(fromPlayer) ? true : false;
+	}
+
+	@Transactional
 	private Game persistGame(CurrentPlayedDto currentPlayedDto) {
 
 		Player player = playerRepo.findById(fromPlayer)
@@ -166,15 +195,9 @@ public class GameServiceImpl implements GameService {
 		gameRepo.save(newGame);
 
 		player.getGames().add(newGame);
-
 		playerRepo.save(player);
 
 		return newGame;
-	}
-
-	private void sendToChannel(CurrentPlayedDto currentPlayedDto) {
-		Message<CurrentPlayedDto> message = new GenericMessage<CurrentPlayedDto>(currentPlayedDto);
-		this.integrationGateway.sendToMqtt(message);
 	}
 
 	private Game createGame(CurrentPlayedDto currentPlayedDto, GAMETYPE status) {
@@ -188,15 +211,6 @@ public class GameServiceImpl implements GameService {
 		game.setStatus(status);
 
 		return game;
-	}
-
-	@Transactional
-	private void play(Game game, CurrentPlayedDto currentPlayedDto) {
-		game.setCurrentNumber(currentPlayedDto.getNumber());
-		gameRepo.save(game);
-
-		currentPlayedDto.setFromPlayer(fromPlayer);
-		sendToChannel(currentPlayedDto);
 	}
 
 	private boolean checkWon(int currentNumber, Game game, CurrentPlayedDto currentPlayedDto) {
@@ -219,28 +233,8 @@ public class GameServiceImpl implements GameService {
 		return false;
 	}
 
-	public int calculateNextMove(int playedNumber) {
-
-		int modulo = playedNumber % 3;
-		int nextMove = 0;
-
-		switch (modulo) {
-		case 0:
-			nextMove = (playedNumber / 3);
-			break;
-		case 1:
-			nextMove = ((playedNumber - 1) / 3);
-			break;
-		case 2:
-			nextMove = ((playedNumber + 1) / 3);
-			break;
-		default:
-			nextMove = 0;
-			break;
-		}
-
-		return nextMove;
-
+	private void sendToChannel(CurrentPlayedDto currentPlayedDto) {
+		Message<CurrentPlayedDto> message = new GenericMessage<CurrentPlayedDto>(currentPlayedDto);
+		this.integrationGateway.sendToMqtt(message);
 	}
-
 }

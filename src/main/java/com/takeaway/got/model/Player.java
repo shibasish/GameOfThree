@@ -26,7 +26,8 @@ public class Player {
 	private GAMEMODE mode;
 	
 	@Column(name="PLAYER_GAME")
-	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	@OneToMany(cascade = {CascadeType.PERSIST, CascadeType.DETACH,
+	 						CascadeType.REFRESH, CascadeType.REMOVE}, fetch = FetchType.EAGER)
 	private List<Game> games = new ArrayList<>();
 
 	public String getPlayerId() {

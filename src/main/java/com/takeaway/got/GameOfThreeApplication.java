@@ -22,18 +22,9 @@ import org.springframework.messaging.MessageChannel;
 
 import com.takeaway.got.model.GAMEMODE;
 import com.takeaway.got.repo.PlayerRepo;
-//import springfox.documentation.RequestHandler;
-//import springfox.documentation.builders.PathSelectors;
-//import springfox.documentation.builders.RequestHandlerSelectors;
-//import springfox.documentation.service.ApiInfo;
-//import springfox.documentation.spi.DocumentationType;
-//import springfox.documentation.spring.web.plugins.Docket;
-//import springfox.documentation.swagger2.annotations.EnableSwagger2;
-
 
 @SpringBootApplication
 @Configuration
-//@EnableSwagger2
 public class GameOfThreeApplication implements CommandLineRunner {
 
 	@Value("${gameofthree.fromPlayerId}")
@@ -68,7 +59,7 @@ public class GameOfThreeApplication implements CommandLineRunner {
 
 		adapter.setCompletionTimeout(5000);
 		adapter.setConverter(new DefaultPahoMessageConverter());
-		adapter.setQos(1);
+		adapter.setQos(2);
 		adapter.setOutputChannel(mqttInputChannel());
 		adapter.setManualAcks(true);
 		return adapter;

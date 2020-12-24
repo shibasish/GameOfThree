@@ -8,7 +8,7 @@ services:
       - "8081:8080"
     restart: always
     networks:
-       - foo
+       - gameofthree
     depends_on: 
       - mydb1
     external_links:
@@ -29,7 +29,7 @@ services:
       - "3307:3306"
     restart: always
     networks:
-       - foo
+       - gameofthree
     environment:
       - MYSQL_ROOT_USER=root 
       - MYSQL_ROOT_PASSWORD=P@ssword1234
@@ -37,9 +37,9 @@ services:
       - my-data-volume:/var/lib/mysql
 
 networks:
-  foo:
+  gameofthree:
     external:
-      name: foo
+      name: gameofthree
 
 volumes:
   my-data-volume:

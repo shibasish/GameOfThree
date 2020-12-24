@@ -83,6 +83,7 @@ class GameOfThreeApplicationTests {
 
     @Test
     public void calculateCurrentNumberTest() {
+
         assertEquals(12, gameService.calculateNextMove(37));
     }
 

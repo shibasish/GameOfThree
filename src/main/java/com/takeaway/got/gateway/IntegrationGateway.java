@@ -7,10 +7,7 @@ import org.springframework.messaging.Message;
 @MessagingGateway
 public interface IntegrationGateway {
 
-
-    @Gateway(requestChannel = "mqttHeaderEnricherChannel")
+    @Gateway(requestChannel = "mqttMessageTransformerChannel")
     void sendToMqtt(Message<?> data);
 
-    @Gateway(requestChannel = "mqttSendSuccessChannel")
-    void sendSuccess(Message<?> data);
 }
