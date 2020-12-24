@@ -45,8 +45,8 @@ mvn package spring-boot:repackage -Dmaven.test.skip=true
 ## Usage
 
 ```bash
-docker-compose -d -f docker-compose-p1.yml -p player1 up
-docker-compose -d -f docker-compose-p2.yml -p player2 up
+docker-compose -f docker-compose-p1.yml -p player1 up -d
+docker-compose -f docker-compose-p2.yml -p player2 up -d
 ```
 
 Initialize player1 and player2 in database. 
