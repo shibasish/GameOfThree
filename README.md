@@ -32,6 +32,12 @@
 
 ## Installation
 
+### Prerequisites
+* Java 11
+* Docker
+* Docker compose
+* [Mosquitto MQTT broker](https://mosquitto.org/download/) Optional
+
 Perform the following steps:
 
 ```bash
@@ -65,6 +71,16 @@ use takeaway_db
 select * from takeaway_db.game;
 select * from takeaway_db.player;
 select * from takeaway_db.player_games;
+```
+
+## MQTT Broker
+
+```bash
+// subscribe to a topic
+mosquitto_sub -h localhost -p 1883 -t from/+/to/player2 -i mqtt-subscriber --debug
+
+// publish to a topic
+mosquitto_pub -h localhost -p 1883 -t from/player2/to/player1 --debug -m "{\"gameId\":\"<value>\",\"toPlayer\":\"<value>\",\"fromPlayer\":\"<value>\",\"number\":\"<value>\"}"
 ```
 
 ## Testing
