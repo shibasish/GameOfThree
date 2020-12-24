@@ -30,6 +30,10 @@
     * Request Payload: {"toPlayer":""}
     * Description: Start a new game with player. Provide the playerId.
 
+* /api/player/details/games
+    * Method: GET
+    * Description: Check all the games played and the results.
+    
 ## Installation
 
 ### Prerequisites

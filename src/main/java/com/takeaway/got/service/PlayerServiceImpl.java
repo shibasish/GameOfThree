@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import com.takeaway.got.dto.GamesDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,14 @@ public class PlayerServiceImpl implements PlayerService {
                 .filter(game -> game.getStatus() == GAMETYPE.PENDING)
                 .filter(game -> game.getPlayerTurn().equalsIgnoreCase(fromPlayer))
                 .map(game -> new PendingGameDto(game.getSecondPlayer(), game.getCurrentNumber(), game.getGameId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public List<GamesDto> fetchAllGames() {
+        return playerRepo.findById(fromPlayer).get().getGames().stream()
+                .map( game -> new GamesDto(game.getGameId(), game.getSecondPlayer(), game.getResult()) )
                 .collect(Collectors.toList());
     }
 
