@@ -51,7 +51,7 @@ public class GameServiceImpl implements GameService {
 	public ResponseDto startGame(CurrentPlayedDto currentPlayedDto) {
 
 		UUID uuid = UUID.randomUUID();
-		int startingNumber = new Random().nextInt(100);
+		int startingNumber = new Random().nextInt();
 
 		currentPlayedDto.setFromPlayer(fromPlayer);
 		currentPlayedDto.setNumber(startingNumber);

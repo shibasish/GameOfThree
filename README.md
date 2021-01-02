@@ -40,7 +40,7 @@
 * Java 11
 * Docker
 * Docker compose
-* [Mosquitto MQTT broker](https://mosquitto.org/download/) Optional
+* [Mosquitto MQTT broker](https://mosquitto.org/download/) (optional)
 
 Perform the following steps:
 
@@ -49,7 +49,10 @@ git clone https://github.com/shibasish/GameOfThree.git
 docker network create gameofthree
 docker run -it -d -p 1883:1883 --net gameofthree --name mosquitto eclipse-mosquitto
 cd GameofThree
-mvn package spring-boot:repackage -Dmaven.test.skip=true
+// windows build command
+mvnw.cmd package spring-boot:repackage -Dmaven.test.skip=true
+// Unix based build command
+./mvnw package spring-boot:repackage -Dmaven.test.skip=true
 ```
 
 ## Usage
