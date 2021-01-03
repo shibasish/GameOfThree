@@ -2,7 +2,7 @@
 
 ## API
 
-* Root URI: http://localhost:8080/81/
+* Root URI: http://localhost:8080/81
 
 * /api/player/details/mode/{mode} 
     * Method: POST
@@ -95,7 +95,10 @@ mosquitto_pub -h localhost -p 1883 -t from/player2/to/player1 --debug -m "{\"gam
 
 ```bash
 cd GameofThree
-mvn package spring-boot:repackage
+// windows build command
+mvnw.cmd test
+// Unix based build command
+./mvnw test
 ```
-Ensure database container and message container are running. Port 8080/81 should be inactive. Please comment/uncomment required properties
-in application.properties file for player 1/2. 
+Ensure all the application containers and message broker are running. Please comment/uncomment required properties
+in ```application.properties``` file for player 1/2. 
